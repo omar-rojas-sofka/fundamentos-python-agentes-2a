@@ -4,12 +4,87 @@
 
 from datetime import date
 import datetime
+from decimal import DivisionByZero
 
 
+### FUNCIONES
+## operacion(para la calculadora)
+def operacion(num1: int, num2: int, signo: str):
+    if signo == '+':
+        resultado = num1 + num2
+    elif signo == '-':
+        resultado = num1 - num2
+    elif signo == '*':
+        resultado = num1 * num2
+    elif signo =='/':
+        try:
+            resultado = num1 / num2
+        except ZeroDivisionError as e:
+            # resultado = "Error!! No se puede dividir por cero(0)"
+            resultado=f"Se ha producido una excepción: {e}"
+        return resultado
+    return resultado
+
+## contarPalabras para devolver consonantes y vocales
+def contarPalabras(palabra: str):
+    numVocales: int = 0 
+    numConsonantes: int = 0
+    
+    for l in palabra:
+        if l in "aeiou":
+            numVocales += 1
+        elif l in "bcdfghjklmnpqrstvwxyzñ":
+            numConsonantes += 1
+    # Devolvemos ambos valores
+    return numVocales, numConsonantes
+
+## fechaActual para validar la fecha de acuerdo al rol
+def fechaActual(rol: str):
+    if rol == "invitado":
+        raise PermissionError("Privilegios insuficientes AAAAAA.")
+    return f"La fecha actual es {date.today()}"
+
+### gestionar la busqueda del historial
+def gestionar_historial(memoria: list, opcion: str, palabra: str = ""):
+    if not memoria:
+        return "El historial está vacío."
+    if opcion == "1":
+        return memoria
+        # for log in memoria:
+        #     return f"[{log['timestamp']}] {log['rol']} -> {log['cmd']}: {log['descripcion']}"
+    elif opcion == "2":
+        memoria.clear() # Modifica la lista original por referencia
+        return "Historial borrado exitosamente."
+    elif opcion == "3":
+        encontrados = [log for log in memoria if palabra in log['descripcion'].lower() or palabra in log['cmd']]
+        if encontrados:
+            for item in encontrados:
+                return f"[{item['timestamp']}] Coincidencia: {item['descripcion']}"
+        else:
+            return f"No se encontraron registros con: {palabra}"
+
+def crear_log(log: dict,cmd: str, rol: str, mensaje: str):
+    log={"timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+         "cmd": cmd,
+         "rol": rol,
+         "descripcion": mensaje
+         } 
+    return log
+
+def validar_usuario(user: str, password: str, perfiles: list):
+    if user in perfiles and perfiles[user]["password"] == password:
+        return True
+    else:
+        return False
+    
+def obtener_usuario(user: str, password: str, perfiles: list):
+    if user in perfiles and perfiles[user]["password"] == password:
+        return user, perfiles[user_i]["perfil"]
+    
 
 # Primero definimos los perfiles por separado
-perfil_invitado = {"perfil": "invitado", "password": "guest_ab!2" }
-perfil_admin    = {"perfil": "administrador", "password": "hosts_ab12" }
+perfil_invitado = {"perfil": "invitado", "password": "gu" }
+perfil_admin    = {"perfil": "administrador", "password": "ad" }
 historial_chat=[]
 # Luego los guardamos en un diccionario
 perfiles= {
@@ -33,11 +108,9 @@ while num_attemps < 3:
     user_i = input("USUARIO: ").lower()
     pass_i = input("CONTRAEÑA: ")
     user_input = user_i
-    # valido si el usuario existe y si tiene la misma contraseña que digito
-    if user_i in perfiles and perfiles[user_i]["password"] == pass_i:
+    if(validar_usuario(user_i,pass_i,perfiles)):
         is_on_session = True
-        current_user = user_i
-        current_profile = perfiles[user_i]["perfil"]
+        current_user , current_profile = obtener_usuario(user_i,pass_i,perfiles)
         # aca voy a usar lo visto en la primera sesion con el print format
         #print("Tu nombre es: {}, mucho gusto. Naciste en {} y tu eddad es {}".format(nombre_persona,annio, edad) )
         print("Bienvenido {} tu rol es {}".format(current_user,current_profile))
@@ -48,9 +121,6 @@ while num_attemps < 3:
             missing_attemps = total_attemps - num_attemps
             print("Usuario y/o contraseña incorrectos")
             print("Solo le quedan {} intentos".format(missing_attemps))
-
-
-
 if is_on_session == False:
     print("Ha bloqueado al usuario {} se cerrara el agente".format(user_input))
     exit()  
@@ -66,26 +136,33 @@ print("""1. Contar:   Cuenta las vocales y consonantes de una palabra(ejemplo: O
 mensaje=""
 is_on_session = True
 
+datos_log = {}
+
 while is_on_session:
     comando = input("Bot> ").lower()
     if comando == "1":
         palabra = input("Digita la palabra que deseas contar: ").lower()
-        num_v = 0
-        num_c = 0
-        for l in palabra:
-            if l in "aeiou":
-                num_v += 1
-            elif l in "bcdfghjklmnpqrstvwxyzñ":
-                num_c += 1
+        num_v, num_c = contarPalabras(palabra)
         mensaje ="La palabra {} tiene {} vocales y {} consonantes. En total {} tiene {} letras".format(palabra,num_v,num_c,palabra, num_v+num_c)
+        print("tyt")
+        historial_chat.append(crear_log(datos_log, comando,current_profile, mensaje))
+        print(historial_chat)
+        print("aca")
         print(mensaje)
-        
-    elif comando == "2" and current_profile == "administrador":
-        hoy=date.today()
-        mensaje="La fecha actual es {}".format(hoy)
-        print(mensaje)
+    elif comando == "2":        
+        try:
+            mensaje = fechaActual(current_profile)
+            print("tyt")
+            historial_chat.append(crear_log(datos_log, comando,current_profile, mensaje))
+            print(historial_chat)
+            print("aca")
+            print(mensaje)
+        except PermissionError as e:
+            print(f"Error detectado: {e}")
+            
     elif comando == "3":
         mensaje="pong"
+        historial_chat.append(crear_log(datos_log, comando,current_profile, mensaje))
         print(mensaje)
     elif comando == "4":
             entrada = input("Digite primer número: ").replace(",", ".")
@@ -94,43 +171,19 @@ while is_on_session:
             entrada = input("Digite segundo numero: ").replace(",", ".")
             num_2 = float(entrada)
 
-            operacion = input("+ para Suma; - para Resta ; * para producto o / para Divsvion): ")
-                   
-            if operacion == "+":
-                mensaje= "El resultado de {} {} {} es {} ".format(num_1,operacion,num_2,num_1 + num_2)
-                print(mensaje)
-
-            elif operacion == "-":
-                mensaje = "El resultado de {} {} {} es {} ".format(num_1,operacion,num_2,num_1 - num_2)
-                print(mensaje)
-            elif operacion == "*":
-                mensaje = "El resultado de {} {} {} es {} ".format(num_1,operacion,num_2,num_1 * num_2)
-                print(mensaje)
-            elif operacion == "/":
-                if num_2 == 0:
-                    print("No se puede dividir entre {}".format(num_2))
-                else:
-                     mensaje = "El resultado de {} {}  {} es {} ".format(num_1,operacion,num_2,num_1 / num_2)
-                     print(mensaje)
-            else:
-                mensaje = "El operador {}' no valido".format(operacion)
-                print(mensaje)
-
+            operador = input("+ para Suma; - para Resta ; * para producto o / para Divsvion): ")
+            resultado = operacion(num_1,num_2, operador)
+            mensaje = f"El resultado de {num_1} {operador} {num_2} es {resultado}"
+            historial_chat.append(crear_log(datos_log, comando,current_profile, mensaje))
+            print(mensaje)
     elif comando == "5":
         is_on_session = False
     
     else:
         mensaje = "El comando {} no es valido o nbo eres administrador".format(comando)
         print(mensaje)
-
-    d_log={"timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-           "cmd": comando,
-           "rol": current_profile,
-           "descripcion": mensaje
-           }    
-    historial_chat.append(d_log)
     opcionBusqueda = input("Bot> Deseas buscar algo de la conversacion S/N?").lower()
-
+    
     busqueda = True
     contadorCoincidencias = 0
     while busqueda:
@@ -142,38 +195,18 @@ while is_on_session:
             """)
             comandoS = input("Bot-Search> ").lower()
             if comandoS == "1":
-                if len(historial_chat) <= 0:
-                    print("No hay registros en el Log")
-                else: 
-                    print(historial_chat)
+                print(gestionar_historial(historial_chat,comandoS))
             elif comandoS == "2":
                 estaSeguro = input("Esta seguro s/n?. Si seleciona s ya no podra ver o buscar nada en el historial. ").lower()
                 if  estaSeguro == "s":
-                    historial_chat.clear()
-                    print("historial de chat eliminado.")
+                    print(gestionar_historial(historial_chat,comandoS))
                 elif estaSeguro == "n":
                     print("historial de chat no se eliminara.")
                 else: 
                      mensaje = "{} no es valido, debes digira s o n".format(estaSeguro)
             elif comandoS == "3":
-                if len(historial_chat) <= 0:
-                    print(f"No hay registros en el Log")
-                else: 
-                    contadorCoincidencias = 0
-                    coincidencias =[]
-                    palabraS = input("Digita la palabra que deseas buscar en el historial del chat: ").lower()                
-                    for d_log in historial_chat:
-                        # .count() busca todas las repeticiones dentro del string
-                        texto = d_log["descripcion"].lower()
-                        busqueda = palabraS.lower()
-                        cantidad_en_este_log = texto.count(busqueda)
-                        contadorCoincidencias += cantidad_en_este_log
-                        if cantidad_en_este_log > 0:
-                            coincidencias.append(d_log)
-                        else:
-                            print(f"No se encontraron coincidencias de {palabraS} intenta de nuevo")            
-                    print(f"Total coincidencias de {palabraS} : {contadorCoincidencias}")
-                    print(f"En los siguientes chats {coincidencias}")
+                palabraS = input("Digita la palabra que deseas buscar en el historial del chat: ").lower()                
+                print(gestionar_historial(historial_chat,comandoS,palabraS))
             else:
                 busqueda = False
         elif opcionBusqueda == "n":
